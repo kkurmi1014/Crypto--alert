@@ -1,0 +1,25 @@
+name: Run Crypto Strategy
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # हर 5 मिनट में रन होगा
+  workflow_dispatch:  # Manual Run के लिए
+
+jobs:
+  run-strategy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: pip install requests  
+
+      - name: Run Python Script
+        run: python strategy.py
