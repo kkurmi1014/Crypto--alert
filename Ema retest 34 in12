@@ -1,0 +1,58 @@
+import pandas as pd
+import requests
+
+# TradingView से डेटा फेच करने के लिए फ़ंक्शन (5 मिनट टाइमफ्रेम)
+def fetch_tradingview_data(symbol="BTCUSDT", exchange="BINANCE", timeframe="5"):
+    url = f"https://www.tradingview.com/symbols/{exchange}-{symbol}/"
+    response = requests.get(url)
+    
+    # **नोट:** यह URL सिर्फ एक उदाहरण है। डेटा API से प्राप्त करना होगा।
+    # **TradingView के WebSocket API या अन्य Data Providers जैसे CCXT का इस्तेमाल करें।**
+    
+    # Placeholder Data (Demo के लिए)
+    data = {
+        "time": pd.date_range(start="2025-03-01", periods=100, freq="5T"),
+        "close": [50000 + i*10 for i in range(100)]
+    }
+    df = pd.DataFrame(data)
+    
+    # EMA Calculation
+    df["EMA_12"] = df["close"].ewm(span=12, adjust=False).mean()
+    df["EMA_34"] = df["close"].ewm(span=34, adjust=False).mean()
+    
+    return df
+
+# लॉन्ग और शॉर्ट एंट्री सिग्नल चेक करने के लिए फ़ंक्शन
+def check_trade_signals(df):
+    signals = []
+
+    for i in range(2, len(df)):
+        price = df["close"].iloc[i]
+        ema_12 = df["EMA_12"].iloc[i]
+        ema_34 = df["EMA_34"].iloc[i]
+
+        prev_price = df["close"].iloc[i-1]
+        prev_ema_12 = df["EMA_12"].iloc[i-1]
+        prev_ema_34 = df["EMA_34"].iloc[i-1]
+
+        # Long Entry Condition
+        if prev_price > prev_ema_12 > prev_ema_34 and prev_price > prev_ema_34:
+            if price < ema_12 and price <= ema_34:  # Price touches 34 EMA while crossing 12 EMA
+                if df["close"].iloc[i+1] > df["EMA_12"].iloc[i+1]:  # Next candle closes above 12 EMA
+                    signals.append((df["time"].iloc[i], "LONG", price))
+
+        # Short Entry Condition
+        if prev_price < prev_ema_12 < prev_ema_34 and prev_price < prev_ema_34:
+            if price > ema_12 and price >= ema_34:  # Price touches 34 EMA while crossing 12 EMA
+                if df["close"].iloc[i+1] < df["EMA_12"].iloc[i+1]:  # Next candle closes below 12 EMA
+                    signals.append((df["time"].iloc[i], "SHORT", price))
+    
+    return signals
+
+# Run the strategy
+df = fetch_tradingview_data()
+trade_signals = check_trade_signals(df)
+
+# Print Signals
+for signal in trade_signals:
+    print(f"Time: {signal[0]}, Signal: {signal[1]}, Price: {signal[2]}")
